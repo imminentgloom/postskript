@@ -2,6 +2,10 @@
 
 arc required!
 
+addendum is a sampler for arc and norns.
+addendum is fast, momentary and volatile. no files can be loaded, nothing is saved.
+
+you hold to record, then turn the dials. that's it.
 
 works well with a grid, sidvagn and ii via nb.
 
