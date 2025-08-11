@@ -1,7 +1,7 @@
-# addendum
+# postskript
 
-addendum is a sampler for arc and norns.  
-addendum is fast, momentary and volatile.  
+postskript is a sampler for arc and norns.  
+postskript is fast, momentary and volatile.  
 no files can be loaded, nothing is saved.
   
 you hold to record, then turn the dials. that's it.
