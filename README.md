@@ -26,4 +26,4 @@ E2 - crow cv 2
 E3 - crow cv 3 & 4
 ```
 
-_arc required. complemented by a grid, sidvagn and ii via nb._
+_arc required. complemented by a grid, sidvagn or gridkeys and ii via nb._
