@@ -84,10 +84,8 @@ params:set_action("start",
    function(x)
       loop_start = press_time * x
       loop_end = util.clamp(loop_start + loop_length, 0.001, press_time)
-      loop_length = loop_end - loop_start
       softcut.loop_start(playing_voice, loop_start)
-      softcut.loop_end(playing_voice, loop_end)
-      
+      softcut.loop_end(playing_voice, loop_end)      
    end
 )
 
@@ -96,7 +94,6 @@ params:set_action("length",
    function(x)
       loop_length = press_time * x
       loop_end = util.clamp(loop_start + loop_length, 0.001, press_time)
-   
       softcut.loop_end(playing_voice, loop_end)
    end
 )
