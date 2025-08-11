@@ -61,6 +61,8 @@ local waveform = {}
 
 -- params
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+params:add_group("addendum", "addendum", 7)
+
 params:add_control("rate", "rate", controlspec.new(1/32, 1, 0.001, 0.001, 1))
 params:set_action("rate",
    function(x)
