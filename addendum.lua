@@ -4,7 +4,7 @@
 --
 --
 --
--- addendum
+-- postskript
 -- ...
 -- v1.0 / imminent gloom 
 -- 
@@ -27,7 +27,6 @@
 -- E1 - bpm
 -- E2 - crow cv 2
 -- E3 - crow cv 3 & 4
-
 
 -- setup
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -216,7 +215,7 @@ function init()
       softcut.level_slew_time(n, 0.0)
       softcut.recpre_slew_time(n, 0.0)
       softcut.fade_time(n, 0.01)
-      softcut.level_input_cut(n, 1, 0,5)
+      softcut.level_input_cut(n, 1, 0.5)
       softcut.level_input_cut(n, 1, 0.5)
       softcut.level_input_cut(n, 2, 0.5)
       softcut.level_input_cut(n, 2, 0.5)
@@ -234,6 +233,8 @@ function init()
    
    softcut.event_render(on_render)
    softcut.event_position(on_position)
+
+   crow.ii.wsyn.fm_env(0)
 
    if save_on_exit then params:read(norns.state.data .. "state.pset") end
 end
@@ -370,13 +371,12 @@ function redraw()
    s.font_face(3)
    s.font_size(28)
    if recording then
-      s.text_center("recording")
+      s.text_center("opptak")
    elseif stopped then
-      s.text_center("addendum")
+      s.text_center("postskript")
    else
       s.text_center("[ … ]")
    end
-   s.fill()
 
    s.update()   
 end
