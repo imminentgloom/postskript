@@ -38,7 +38,10 @@ local save_on_exit = false
 a = arc.connect()
 
 local s = screen
-local fps = 60
+local fps = 120
+
+local ui_screen_dirty = true
+local ui_arc_dirty = true
 
 local recording = false
 local stopped = true
@@ -56,11 +59,13 @@ local max_level = 0
 local level = 1
 local rate = 1
 
+local clk_press_timer = ""
+
 local waveform = {}
 
 -- params
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-params:add_group("postskript", "postskript", 7)
+params:add_group("postskript", "postskript", 10)
 
 params:add_control("rate", "rate", controlspec.new(1/32, 1, 0.001, 0.001, 1))
 params:set_action("rate",
@@ -121,7 +126,59 @@ params:set_action("cv_3",
 -- functions
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-function on_render(ch, start, i, s)
+local function record()
+   recording = true
+   stopped = false
+   clk_press_timer = clock.run(press_timer_event)
+   softcut.buffer_clear_channel(active_buffer)
+   softcut.buffer(recording_voice, active_buffer)
+   softcut.position(recording_voice, 0)
+   softcut.loop_start(recording_voice, 0)
+   softcut.loop_end(recording_voice, 320)
+   softcut.rec_level(recording_voice, 1)
+   softcut.pre_level(recording_voice, 0)
+   softcut.rec(recording_voice, 1)
+end
+
+local function play()
+   recording = false
+   clock.cancel(clk_press_timer)
+   softcut.rec(recording_voice, 0)
+   softcut.render_buffer(active_buffer, 0, press_time, 64)
+   softcut.loop_end(recording_voice, press_time)
+   softcut.loop(recording_voice, 1)
+   softcut.play(recording_voice, 1)
+   softcut.play(playing_voice, 0)
+   params:set("rate", 1)
+   params:set("level", 1)
+   params:set("start", 0)
+   params:set("length", 1)
+   if active_buffer == 1 then
+      active_buffer = 2
+      recording_voice = 2
+      playing_voice = 1
+   else
+      active_buffer = 1
+      recording_voice = 1
+      playing_voice = 2
+   end        
+end
+
+local function clear()
+   stopped = true
+   softcut.play(1, 0)
+   softcut.play(2, 0)
+   softcut.position(1, 0)
+   softcut.position(2, 0)
+   softcut.buffer_clear()
+   params:set("rate", 1)
+   params:set("level", 1)
+   params:set("start", 0)
+   params:set("length", 1)
+   for n = 1, 64 do waveform[n] = 0 end
+end
+
+local function on_render(ch, start, i, s)
    if #s == 64 then
       waveform = s
       for n = 1, 31 do
@@ -131,7 +188,7 @@ function on_render(ch, start, i, s)
    end
 end
 
-function on_position(i, pos)
+local function on_position(i, pos)
    playback_position = pos
 end
 
@@ -176,7 +233,7 @@ end
 -- clock events
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-local function ui_event()
+function ui_event()
    while true do
       clock.sleep(1/fps)
       redraw()
@@ -184,7 +241,13 @@ local function ui_event()
    end
 end
 
-local function press_timer_event()
+function delayed_init_event()
+   clock.sleep(5)
+   params:set("gridkeys_nb_voice", 17)
+   nb:add_player_params()
+end
+
+function press_timer_event()
    press_time = 0   
    while true do
       if press_time < max_length then
@@ -199,7 +262,8 @@ end
 
 function init()
    clk_ui = clock.run(ui_event)
-   
+   -- clk_delayed_init = clock.run(delayed_init_event)
+
    for n = 2, 4 do
       crow.output[n].slew = 0.1
    end
@@ -234,8 +298,6 @@ function init()
    softcut.event_render(on_render)
    softcut.event_position(on_position)
 
-   crow.ii.wsyn.fm_env(0)
-
    if save_on_exit then params:read(norns.state.data .. "state.pset") end
 end
 
@@ -243,69 +305,24 @@ end
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 function key(n, z)
-
    if n == 2 then
-      local v = recording_voice
-      local p = playing_voice
       if z == 1 then
-         recording = true
-         stopped = false
-         clk_press_timer = clock.run(press_timer_event)
-         softcut.buffer_clear_channel(active_buffer)
-         softcut.buffer(v, active_buffer)
-         softcut.position(v, 0)
-         softcut.loop_start(v, 0)
-         softcut.loop_end(v, 320)
-         softcut.rec_level(v, 1)
-         softcut.pre_level(v, 0)
-         softcut.rec(v, 1)
+         record()
       end
-      
+
       if z == 0 then
-         recording = false
-         clock.cancel(clk_press_timer)
-         softcut.rec(v, 0)
-         softcut.render_buffer(active_buffer, 0, press_time, 64)
-         softcut.loop_end(v, press_time)
-         softcut.loop(v, 1)
-         softcut.play(v, 1)
-         softcut.play(p, 0)
-         params:set("rate", 1)
-         params:set("level", 1)
-         params:set("start", 0)
-         params:set("length", 1)
-         if active_buffer == 1 then
-            active_buffer = 2
-            recording_voice = 2
-            playing_voice = 1
-         else
-            active_buffer = 1
-            recording_voice = 1
-            playing_voice = 2
-         end        
+         play()
       end
    end
    
    if n == 3 then
       if z == 1 then
-         stopped = true
-         softcut.play(1, 0)
-         softcut.play(2, 0)
-         softcut.position(1, 0)
-         softcut.position(2, 0)
-         softcut.buffer_clear()
-         params:set("rate", 1)
-         params:set("level", 1)
-         params:set("start", 0)
-         params:set("length", 1)
-         
-         for n = 1, 64 do waveform[n] = 0 end
-      end
-   
-      if z == 0 then
-   
+         clear()
       end
    end
+
+   ui_screen_dirty = true
+   ui_arc_dirty = true
 end
 
 -- norns: encoders
@@ -324,6 +341,7 @@ function enc(n, d)
       params:delta("cv_2", d)
       params:delta("cv_3", d)
    end
+   -- ui_screen_dirty = true
 end
 
 -- arc: key
@@ -336,6 +354,7 @@ a.key = function(n, z)
       params:set("start", 0)
       params:set("length", 1)
    end
+   ui_arc_dirty = true
 end
 
 -- arc: encoders
@@ -364,28 +383,31 @@ end
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 function redraw()
-   s.clear()
-   
-   s.level(15)
-   s.move(63, 48)
-   s.font_face(3)
-   s.font_size(28)
-   if recording then
-      s.text_center("opptak")
-   elseif stopped then
-      s.text_center("postskript")
-   else
-      s.text_center("[ … ]")
-   end
+   if ui_screen_dirty then
+      s.clear()
+      
+      s.level(15)
+      s.move(63, 48)
+      s.font_face(3)
+      s.font_size(28)
+      if recording then
+         s.text_center("opptak")
+      elseif stopped then
+         s.text_center("postskript")
+      else
+         s.text_center("[ … ]")
+      end
 
-   s.update()   
+      s.update()
+      ui_screen_dirty = false
+   end
 end
 
 -- arc: drawing
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 function arc_redraw()   
- 
+   if ui_arc_dirty then
       -- one led = 5.625 degrees
       
       a:all(0)
@@ -441,6 +463,8 @@ function arc_redraw()
       a:led(4, 1, 15)
          
       a:refresh()
+      ui_arc_dirty = true
+   end
 end
 
 -- cleanup
