@@ -384,6 +384,7 @@ function redraw()
    if ui_screen_dirty then
       s.clear()
       
+      s.aa(0)
       s.level(15)
       s.move(63, 48)
       s.font_face(3)
