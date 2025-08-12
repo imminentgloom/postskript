@@ -59,8 +59,6 @@ local max_level = 0
 local level = 1
 local rate = 1
 
-local clk_press_timer = ""
-
 local waveform = {}
 
 -- params
