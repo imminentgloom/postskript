@@ -63,7 +63,7 @@ local waveform = {}
 
 -- params
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-params:add_group("postskript", "postskript", 10)
+params:add_group("postskript", "postskript", 7)
 
 params:add_control("rate", "rate", controlspec.new(1/32, 1, 0.001, 0.001, 1))
 params:set_action("rate",
@@ -127,11 +127,12 @@ params:set_action("cv_3",
 local function record()
    recording = true
    stopped = false
-   clk_press_timer = clock.run(press_timer_event)
+   press_time = 0
+   clk_press_timer:start()
    softcut.buffer_clear_channel(active_buffer)
    softcut.buffer(recording_voice, active_buffer)
-   softcut.position(recording_voice, 0)
-   softcut.loop_start(recording_voice, 0)
+   softcut.position(recording_voice, 1)
+   softcut.loop_start(recording_voice, 1)
    softcut.loop_end(recording_voice, 320)
    softcut.rec_level(recording_voice, 1)
    softcut.pre_level(recording_voice, 0)
@@ -140,11 +141,12 @@ end
 
 local function play()
    recording = false
-   clock.cancel(clk_press_timer)
+   clk_press_timer:stop()
    softcut.rec(recording_voice, 0)
    softcut.render_buffer(active_buffer, 0, press_time, 64)
-   softcut.loop_end(recording_voice, press_time)
+   softcut.loop_end(recording_voice, press_time + 1)
    softcut.loop(recording_voice, 1)
+   softcut.position(recording_voice, 1)
    softcut.play(recording_voice, 1)
    softcut.play(playing_voice, 0)
    params:set("rate", 1)
@@ -242,16 +244,13 @@ end
 function delayed_init_event()
    clock.sleep(5)
    params:set("gridkeys_nb_voice", 17)
+   -- params:set("sidv_nb_player", 17)
    nb:add_player_params()
 end
 
 function press_timer_event()
-   press_time = 0   
-   while true do
-      if press_time < max_length then
-         press_time = press_time + 0.001 -- seconds
-      end
-      clock.sleep(0.001)
+   if press_time < max_length then
+      press_time = press_time + 0.001 -- seconds
    end
 end
 
@@ -261,6 +260,10 @@ end
 function init()
    clk_ui = clock.run(ui_event)
    -- clk_delayed_init = clock.run(delayed_init_event)
+
+   clk_press_timer = metro.init()
+   clk_press_timer.event = press_timer_event
+   clk_press_timer.time = 0.001
 
    for n = 2, 4 do
       crow.output[n].slew = 0.1
@@ -295,6 +298,7 @@ function init()
    
    softcut.event_render(on_render)
    softcut.event_position(on_position)
+
 
    if save_on_exit then params:read(norns.state.data .. "state.pset") end
 end
