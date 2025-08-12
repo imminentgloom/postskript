@@ -73,7 +73,7 @@ params:set_action("rate",
    end
 )
 
-params:add_control("level", "level", controlspec.new(0, 1.5, 0.001, 0.001, 1))
+params:add_control("level", "level", controlspec.new(0, 2.0, 0.001, 0.001, 1))
 params:set_action("level",
    function(x)
       level = x
@@ -432,9 +432,9 @@ function arc_redraw()
 
       -- e2
       local s1 = 5.625 * -31
-      local s2 = util.clamp(5.625 * -31 + 5.625 * 63 * level * 2 / 3, 5.625 * -31, 5.625 * 63)
+      local s2 = util.clamp(5.625 * -31 + 5.625 * 63 * level * 0.5, 5.625 * -31, 5.625 * 63)
       arc_segment(2, s1, s2, br)
-      a:led(2, 11, 15)
+      a:led(2, 1, 15)
       a:led(2, 33, 1)
 
       --e3
