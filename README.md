@@ -17,7 +17,7 @@ E1 - rate
 E2 - level
 E3 - start
 E4 - length
-K1 - reset E1-E4
+K1 - hold to record
 ```
 ```
 personal:
