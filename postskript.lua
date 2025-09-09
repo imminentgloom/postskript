@@ -43,9 +43,6 @@ a = arc.connect()
 local s = screen
 local fps = 120
 
-local ui_screen_dirty = true
-local ui_arc_dirty = true
-
 local recording = false
 local stopped = true
 local press_time = 320
@@ -274,7 +271,7 @@ end
 function init()
    clk_ui_arc = clock.run(ui_event_arc)
    clk_ui_screen = clock.run(ui_event_screen)
-   clk_delayed_init = clock.run(delayed_init_event)
+   -- clk_delayed_init = clock.run(delayed_init_event)
 
    clk_press_timer = metro.init()
    clk_press_timer.event = press_timer_event
@@ -316,8 +313,6 @@ function init()
    softcut.event_render(on_render)
    softcut.event_position(on_position)
 
-   params:bang()
-
    if save_on_exit then params:read(norns.state.data .. "state.pset") end
 end
 
@@ -340,9 +335,6 @@ function key(n, z)
          clear()
       end
    end
-
-   ui_screen_dirty = true
-   ui_arc_dirty = true
 end
 
 -- norns: encoders
@@ -405,7 +397,6 @@ a.delta = function(n, d)
    if n == 4 then
       params:delta("length", d)
    end
-   ui_arc_dirty = true
 end
 
 -- norns: drawing
@@ -440,76 +431,74 @@ end
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 function arc_redraw()   
-   if ui_arc_dirty then
-      -- one led = 5.625 degrees
-      
-      a:all(0)
-      
-      local br = 4
-      
-      local start = params:get("start")
-      local length = params:get("length")
-      local length_full = length
+   -- one led = 5.625 degrees
+   
+   a:all(0)
+   
+   local br = 4
+   
+   local start = params:get("start")
+   local length = params:get("length")
+   local length_full = length
 
-      if length + start > 1 then
-         length = 1 - start
-      end
-      
-      -- e1
-
-      for n = 1, 64 do
-         local v = math.abs(waveform[n])
-         local scaled = v == 0 and 0 or math.log10(1 + 9 * v) * 15
-         a:led(1, n, math.floor(scaled))
-      end
-
-      a:led(1, 33, 0)
-      
-      if recording then
-         softcut.query_position(recording_voice)
-         a:led(1, math.floor(64 * playback_position / prev_press_time) + 32 % 64 + 1, math.floor(15 * level * 0.5))
-      else
-         softcut.query_position(playing_voice)
-         a:led(1, math.floor(64 * playback_position / press_time) + 32 % 64 + 1, math.floor(15 * level * 0.5))
-      end
-
-      -- e2
-      local s1 = 5.625 * -31
-      local s2 = util.clamp(5.625 * -31 + 5.625 * 63 * level * 0.5, 5.625 * -31, 5.625 * 63)
-      arc_segment(2, s1, s2, br)
-      a:led(2, 1, 15)
-      a:led(2, 33, 1)
-
-      --e3
-      local s1 = 5.625 * -31 + start * 5.625 * 62
-      local s2 = util.clamp(s1 + 5.625 * 63 * length + 5.625, 5.625 * -32, 5.625 * 32)
-      local s3 = 5.625 * -30 + start * 5.625 * 62
-      local s4 = util.clamp(s3 + 5.625 * 63 * length_full, 5.625 * -32, 5.625 * 128)
-      arc_segment(3, s3, s4, 1)
-      arc_segment(3, s1, s2, br)
-      a:led(3, 33, 15)
-      
-      -- e4
-      local s1 = 5.625 * -31 * length_full
-      local s2 = 5.625 * 0
-      arc_segment(4, s1, s2, 1)
-
-      local s1 = 5.625 * 1
-      local s2 = 5.625 * 1 + 5.625 * 31 * length_full
-      arc_segment(4, s1, s2, 1)
-
-      local s1 = 5.625 * -31 * length
-      local s2 = 5.625 * 0
-      arc_segment(4, s1, s2, br + 1)
-
-      local s1 = 5.625 * 1
-      local s2 = 5.625 * 1 + 5.625 * 31 * length
-      arc_segment(4, s1, s2, br + 1)
-      a:led(4, 1, 15)
-         
-      a:refresh()
-      ui_arc_dirty = true
+   if length + start > 1 then
+      length = 1 - start
    end
+   
+   -- e1
+
+   for n = 1, 64 do
+      local v = math.abs(waveform[n])
+      local scaled = v == 0 and 0 or math.log10(1 + 9 * v) * 15
+      a:led(1, n, math.floor(scaled))
+   end
+
+   a:led(1, 33, 0)
+   
+   if recording then
+      softcut.query_position(recording_voice)
+      a:led(1, math.floor(64 * playback_position / prev_press_time) + 32 % 64 + 1, math.floor(15 * level * 0.5))
+   else
+      softcut.query_position(playing_voice)
+      a:led(1, math.floor(64 * playback_position / press_time) + 32 % 64 + 1, math.floor(15 * level * 0.5))
+   end
+
+   -- e2
+   local s1 = 5.625 * -31
+   local s2 = util.clamp(5.625 * -31 + 5.625 * 63 * level * 0.5, 5.625 * -31, 5.625 * 63)
+   arc_segment(2, s1, s2, br)
+   a:led(2, 1, 15)
+   a:led(2, 33, 1)
+
+   --e3
+   local s1 = 5.625 * -31 + start * 5.625 * 62
+   local s2 = util.clamp(s1 + 5.625 * 63 * length + 5.625, 5.625 * -32, 5.625 * 32)
+   local s3 = 5.625 * -30 + start * 5.625 * 62
+   local s4 = util.clamp(s3 + 5.625 * 63 * length_full, 5.625 * -32, 5.625 * 128)
+   arc_segment(3, s3, s4, 1)
+   arc_segment(3, s1, s2, br)
+   a:led(3, 33, 15)
+   
+   -- e4
+   local s1 = 5.625 * -31 * length_full
+   local s2 = 5.625 * 0
+   arc_segment(4, s1, s2, 1)
+
+   local s1 = 5.625 * 1
+   local s2 = 5.625 * 1 + 5.625 * 31 * length_full
+   arc_segment(4, s1, s2, 1)
+
+   local s1 = 5.625 * -31 * length
+   local s2 = 5.625 * 0
+   arc_segment(4, s1, s2, br + 1)
+
+   local s1 = 5.625 * 1
+   local s2 = 5.625 * 1 + 5.625 * 31 * length
+   arc_segment(4, s1, s2, br + 1)
+   a:led(4, 1, 15)
+      
+   a:refresh()
+
 end
 
 -- cleanup
