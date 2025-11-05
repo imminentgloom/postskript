@@ -6,15 +6,11 @@
 --
 -- postskript
 -- ...
--- v1.1 / imminent gloom 
+-- v1.2 / imminent gloom 
 -- 
 -- primitive sampler
 -- 
--- arc required!
--- 
--- controls, norns:
--- K2 - hold to record
--- K3 - clear
+-- arc recomended!
 -- 
 -- controls, arc:
 -- E1 - rate
@@ -22,30 +18,31 @@
 -- E3 - start
 -- E4 - length
 -- K1 - hold to record
---
--- personal:
--- E1 - bpm
--- E2 - crow cv 2
--- E3 - crow cv 3 & 4
---
--- no sound?
--- check softcut levels
+-- 
+-- controls, norns:
+-- E1 - rate
+-- E1 + K1 - level
+-- E2 - start
+-- E3 - length
+-- K2 - hold to record
+-- K3 - clear
 
 -- setup
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 tab = require("tabutil")
 
-local save_on_exit = false
-
 a = arc.connect()
+
+local save_on_exit = false 
 
 local s = screen
 local fps = 120
+local frame = 1
 
 local recording = false
 local stopped = true
-local press_time = 320
+local press_time = 5
 local prev_press_time = press_time
 local active_buffer = 1
 local recording_voice = 1
@@ -55,6 +52,7 @@ local loop_length = 320
 local loop_end = 320
 local playback_position = 1
 local max_length = 320
+local min_length = 0.01
 local max_level = 0
 local level = 1
 local rate = 1
@@ -63,9 +61,9 @@ local waveform = {}
 
 -- params
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-params:add_group("postskript", "postskript", 7)
+params:add_group("postskript", "postskript", 4)
 
-params:add_control("rate", "rate", controlspec.new(1/32, 1, 0.001, 0.001, 1))
+params:add_control("rate", "rate", controlspec.new(1/2, 1, 0.001, 0.001, 1))
 params:set_action("rate",
    function(x)
       rate = x
@@ -81,17 +79,17 @@ params:set_action("level",
    end
 )
 
-params:add_control("start", "start", controlspec.new(0, 1, 0.001, 0.001, 0))
+params:add_control("start", "start", controlspec.new(0.0, 1.0, 0.001, 0.001, 0))
 params:set_action("start",
    function(x)
       loop_start = press_time * x
-      loop_end = util.clamp(loop_start + loop_length, 0.001, press_time)
+      loop_end = util.clamp(loop_start + loop_length, 0.000, press_time)
       softcut.loop_start(playing_voice, loop_start)
       softcut.loop_end(playing_voice, loop_end)      
    end
 )
 
-params:add_control("length", "length", controlspec.new(0.001, 1, 0.001, 0.001, 1))
+params:add_control("length", "length", controlspec.new(0.001, 1.0, 0.001, 0.001, 1))
 params:set_action("length",
    function(x)
       loop_length = press_time * x
@@ -99,27 +97,6 @@ params:set_action("length",
       loop_end = util.clamp(loop_start + loop_length, 0.001, press_time)
       softcut.loop_start(playing_voice, loop_start)
       softcut.loop_end(playing_voice, loop_end)
-   end
-)
-
-params:add_control("cv_1", "cv_1", controlspec.new(-5, 5, 0.001, 0.001, 0))
-params:set_action("cv_1",
-   function(x)
-      crow.output[2].volts = x
-   end
-)
-
-params:add_control("cv_2", "cv_2", controlspec.new(-5, 5, 0.001, 0.001, 0))
-params:set_action("cv_2",
-   function(x)
-      crow.output[3].volts = x
-   end
-)
-
-params:add_control("cv_3", "cv_3", controlspec.new(0, 10, 0.001, 0.001, 0))
-params:set_action("cv_3",
-   function(x)
-      crow.output[4].volts = x
    end
 )
 
@@ -140,11 +117,15 @@ local function record()
    softcut.loop_start(recording_voice, 0)
    softcut.loop_end(recording_voice, 320)
    softcut.rec(recording_voice, 1)
+
+   --params:bang()
 end
 
 local function play()
    recording = false
+   playing = true
    clk_press_timer:stop()
+   press_time = press_time - min_length
 
    softcut.rec(recording_voice, 0)
    softcut.position(recording_voice, 0)
@@ -153,7 +134,7 @@ local function play()
    softcut.loop_end(recording_voice, press_time)
    softcut.play(recording_voice, 1)
    softcut.play(playing_voice, 0)
-
+   
    softcut.render_buffer(active_buffer, 0, press_time, 64)
 
    params:set("rate", 1)
@@ -173,6 +154,7 @@ end
 
 local function clear()
    stopped = true
+   playing = false
    softcut.play(1, 0)
    softcut.play(2, 0)
    softcut.position(1, 0)
@@ -241,6 +223,11 @@ end
 function ui_event_arc()
    while true do
       clock.sleep(1/fps)
+      if frame > 120 then
+         frame = 1
+      else
+         frame = frame + 1
+      end
       arc_redraw()
    end
 end
@@ -271,29 +258,25 @@ end
 function init()
    clk_ui_arc = clock.run(ui_event_arc)
    clk_ui_screen = clock.run(ui_event_screen)
-   -- clk_delayed_init = clock.run(delayed_init_event)
+   clk_delayed_init = clock.run(delayed_init_event)
 
    clk_press_timer = metro.init()
    clk_press_timer.event = press_timer_event
    clk_press_timer.time = 0.001
-
-   for n = 2, 4 do
-      crow.output[n].slew = 0.1
-   end
 
    for n = 1, 2 do
       softcut.enable(n, 1)
       softcut.rate(n, 1)
       softcut.loop(n, 1)
       softcut.loop_start(n, 0)
-      softcut.loop_end(n, 320)
+      softcut.loop_end(n, max_length)
       softcut.level(n, 1)
       softcut.rec_level(n, 1)
       softcut.pre_level(n, 0)
       softcut.pan(n, 0)
       softcut.level_slew_time(n, 0.0)
       softcut.recpre_slew_time(n, 0.0)
-      softcut.fade_time(n, 0.01)
+      softcut.fade_time(n, min_length)
       softcut.level_input_cut(n, 1, 0.5)
       softcut.level_input_cut(n, 1, 0.5)
       softcut.level_input_cut(n, 2, 0.5)
@@ -320,6 +303,14 @@ end
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 function key(n, z)
+   if n == 1 then 
+      if z == 1 then
+         e1_held = true
+      else
+         e1_held = false
+      end
+   end      
+
    if n == 2 then
       if z == 1 then
          record()
@@ -341,17 +332,23 @@ end
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 function enc(n, d)
-   if n == 1 then
-      params:delta("clock_tempo", d)
+
+   d = d * 2.0
+
+   if n == 1 and not e1_held then
+      params:delta("rate", d)
    end
-   
+
+   if n == 1 and e1_held then
+      params:delta("level", d)
+   end
+
    if n == 2 then
-      params:delta("cv_1", d)
+      params:delta("start", d)
    end
-   
+
    if n == 3 then
-      params:delta("cv_2", d)
-      params:delta("cv_3", d)
+      params:delta("length", d)
    end
 end
 
@@ -368,14 +365,6 @@ a.key = function(n, z)
          play()
       end
    end
-
-   -- reset params
-   -- if n == 1 and z == 1 then
-   --    params:set("rate", 1)
-   --    params:set("level", 1)
-   --    params:set("start", 0)
-   --    params:set("length", 1)
-   -- end
 end
 
 -- arc: encoders
@@ -410,19 +399,44 @@ function redraw()
    s.move(63, 48)
    s.font_face(3)
    s.font_size(28)
-   if recording then
-      s.text_center("opptak")
-   elseif stopped then
-      s.text_center("postskript")
-   else
-      s.text_center("[ … ]")
+
+   s.text_center("postskript")
+
+   local start = params:get("start")
+   local length = params:get("length")
+   local rate = params:get_raw("rate")
+
+   -- length
+   s.move(util.clamp(10 + start * 89, 10, 99), 51)
+   s.line(util.clamp(10 + (start + length) * 89 + 1, 11, 100), 51)
+   if start + length > 1 then
+      s.move(105, 51)
+      s.line(util.clamp(105 + -1 * (1 - start - length) * 89, 105, 123), 51)
    end
 
+   -- rate
+   s.move(105, 53)
+   s.line(105 + rate * 18, 53)
+   s.stroke()
+   
+   -- playback
+   if recording then
+      if ((frame - 1) % 30) + 1  > 15 then
+         s.level(0)
+      else
+         s.level(15)
+      end
+      s.pixel(10, 53)
+   elseif playing then
+      s.pixel(util.clamp(10 + (util.clamp(playback_position / press_time, 0, 1) * 88), 10 + start * 89, 9 + (start + length) * 89 + 1), 53)
+   end
+   s.fill()
+   
    -- debug
    -- s.move(0, 8)
    -- s.font_face(1)
    -- s.font_size(8)
-   -- s.text()
+   -- s.text(playback_posiition)
 
    s.update()
 end
@@ -435,18 +449,17 @@ function arc_redraw()
    
    a:all(0)
    
-   local br = 4
+   local br = 3
    
    local start = params:get("start")
    local length = params:get("length")
    local length_full = length
-
-   if length + start > 1 then
-      length = 1 - start
-   end
    
-   -- e1
+   if length + math.abs(start) > 1 then
+      length = 1 - math.abs(start)
+   end
 
+   -- e1
    for n = 1, 64 do
       local v = math.abs(waveform[n])
       local scaled = v == 0 and 0 or math.log10(1 + 9 * v) * 15
@@ -454,13 +467,18 @@ function arc_redraw()
    end
 
    a:led(1, 33, 0)
-   
+    
    if recording then
-      softcut.query_position(recording_voice)
-      a:led(1, math.floor(64 * playback_position / prev_press_time) + 32 % 64 + 1, math.floor(15 * level * 0.5))
-   else
+      if ((frame - 1) % 30) + 1  > 15 then
+         a:led(1, 33, 10)
+      else
+         a:led(1, 33, 15)
+      end
+   elseif stopped then
+      a:led(1, 33, 10)
+   elseif playing then
       softcut.query_position(playing_voice)
-      a:led(1, math.floor(64 * playback_position / press_time) + 32 % 64 + 1, math.floor(15 * level * 0.5))
+      a:led(1, math.floor(64 * util.clamp(playback_position / press_time, 0, 1)) + 32 % 64 + 1, 15)
    end
 
    -- e2
@@ -470,13 +488,13 @@ function arc_redraw()
    a:led(2, 1, 15)
    a:led(2, 33, 1)
 
-   --e3
-   local s1 = 5.625 * -31 + start * 5.625 * 62
-   local s2 = util.clamp(s1 + 5.625 * 63 * length + 5.625, 5.625 * -32, 5.625 * 32)
-   local s3 = 5.625 * -30 + start * 5.625 * 62
-   local s4 = util.clamp(s3 + 5.625 * 63 * length_full, 5.625 * -32, 5.625 * 128)
-   arc_segment(3, s3, s4, 1)
-   arc_segment(3, s1, s2, br)
+   -- e3
+   local s1 = 5.625 * -30 + start * 5.625 * 62
+   local s2 = util.clamp(s1 + 5.625 * 63 * length_full, 5.625 * -32, 5.625 * 128)
+   local s3 = 5.625 * -31 + start * 5.625 * 62
+   local s4 = util.clamp(s3 + 5.625 * 63 * length + 5.625, 5.625 * -32, 5.625 * 32)
+   arc_segment(3, s1, s2, 1)
+   arc_segment(3, s3, s4, br)
    a:led(3, 33, 15)
    
    -- e4
@@ -498,7 +516,6 @@ function arc_redraw()
    a:led(4, 1, 15)
       
    a:refresh()
-
 end
 
 -- cleanup
