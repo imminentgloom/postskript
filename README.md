@@ -7,11 +7,6 @@ no files can be loaded, nothing is saved.
 you hold to record, then turn the dials. that's it.
 
 ```
-controls, norns:
-K2 - hold to record
-K3 - clear
-```
-```
 controls, arc:
 E1 - rate
 E2 - level
@@ -20,10 +15,13 @@ E4 - length
 K1 - hold to record
 ```
 ```
-personal:
-E1 - bpm
-E2 - crow cv 2
-E3 - crow cv 3 & 4
+controls, norns:
+E1 - rate
+E1 + K1 - level
+E2 - start
+E3 - length
+K2 - hold to record
+K3 - clear
 ```
 
-_arc required. complemented by a grid, sidvagn or gridkeys, and ii via nb._
+_arc recomended. complemented by a grid, sidvagn or gridkeys, and ii via nb._
