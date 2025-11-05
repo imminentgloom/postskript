@@ -83,18 +83,18 @@ params:add_control("start", "start", controlspec.new(0.0, 1.0, 0.001, 0.001, 0))
 params:set_action("start",
    function(x)
       loop_start = press_time * x
-      loop_end = util.clamp(loop_start + loop_length, 0.000, press_time)
+      loop_end = util.clamp(loop_start + loop_length, min_length, press_time)
       softcut.loop_start(playing_voice, loop_start)
       softcut.loop_end(playing_voice, loop_end)      
    end
 )
 
-params:add_control("length", "length", controlspec.new(0.001, 1.0, 0.001, 0.001, 1))
+params:add_control("length", "length", controlspec.new(0.0, 1.0, 0.001, 0.001, 1))
 params:set_action("length",
    function(x)
       loop_length = press_time * x
-      loop_start = util.clamp(loop_start, 0.001, loop_start)
-      loop_end = util.clamp(loop_start + loop_length, 0.001, press_time)
+      loop_start = util.clamp(loop_start, 0.0, loop_start)
+      loop_end = util.clamp(loop_start + loop_length, min_length, press_time)
       softcut.loop_start(playing_voice, loop_start)
       softcut.loop_end(playing_voice, loop_end)
    end
