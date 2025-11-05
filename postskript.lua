@@ -333,7 +333,7 @@ end
 
 function enc(n, d)
 
-   d = d * 2.0
+   -- d = d * 2.0
 
    if n == 1 and not e1_held then
       params:delta("rate", d)
